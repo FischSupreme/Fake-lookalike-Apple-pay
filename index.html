@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GrokWallet – Editable Apple Cash</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* -------------------------------------------------
+   Global reset & dark-mode base
+   ------------------------------------------------- */
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#000;color:#fff;}
+a{color:inherit;text-decoration:none;}
+
+/* -------------------------------------------------
+   Status bar (iPhone notch)
+   ------------------------------------------------- */
+.status-bar{
+  position:fixed;top:0;left:0;right:0;height:44px;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:0 20px;font-size:14px;z-index:10;
+}
+.status-bar .time{font-weight:600;}
+.status-bar .icons img{height:16px;filter:invert(1);}
+
+/* -------------------------------------------------
+   Main container
+   ------------------------------------------------- */
+.container{max-width:390px;margin:0 auto;padding-top:44px;background:#000;min-height:100vh;position:relative;padding-bottom:80px;}
+
+/* -------------------------------------------------
+   Apple Cash Card
+   ------------------------------------------------- */
+.cash-card{
+  position:relative;border-radius:20px;overflow:hidden;
+  background:linear-gradient(135deg,#1c1c1e,#121214);
+  margin:20px 16px 0;box-shadow:0 8px 32px rgba(0,0,0,.6);
+}
+.cash-card .header{padding:20px 20px 0;display:flex;align-items:center;}
+.cash-card .logo{font-size:28px;font-weight:800;letter-spacing:-.5px;}
+.cash-card .background{
+  position:absolute;top:0;left:0;right:0;height:240px;
+  background:radial-gradient(circle at 30% 70%,rgba(255,255,255,.07),transparent 50%);
+}
+.cash-card .arrows{
+  position:absolute;top:60px;left:0;right:0;height:180px;
+  background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0,50 Q25,30 50,50 T100,50" stroke="%23ffffff22" stroke-width="1.2" fill="none"/></svg>') repeat-x;
+  background-size:30px 30px;animation:flow 12s linear infinite;
+}
+@keyframes flow{0%{background-position:0 0}100%{background-position:300px 0}}
+.cash-card .content{position:relative;z-index:2;padding:0 20px 24px;}
+.cash-card .balance-label{font-size:14px;opacity:.7;margin-top:12px;}
+.cash-card .balance{font-size:48px;font-weight:800;letter-spacing:-1.5px;margin:4px 0 8px;}
+.cash-card .account{font-size:15px;opacity:.8;display:flex;align-items:center;}
+.cash-card .account svg{width:16px;height:16px;margin-left:4px;}
+
+/* -------------------------------------------------
+   Send / Request button
+   ------------------------------------------------- */
+.send-btn{
+  margin:16px 16px 0;display:flex;align-items:center;justify-content:center;
+  background:#fff;color:#000;border-radius:50px;height:44px;
+  font-weight:600;font-size:17px;gap:8px;
+}
+.send-btn svg{width:20px;height:20px;}
+
+/* -------------------------------------------------
+   Virtual Card Banner
+   ------------------------------------------------- */
+.banner{
+  margin:16px;background:#1c1c1e;border-radius:12px;padding:12px 16px;
+  display:flex;align-items:flex-start;gap:12px;position:relative;
+}
+.banner .icon{background:#333;border-radius:8px;padding:6px;}
+.banner .icon svg{width:20px;height:20px;}
+.banner .text{font-size:14px;line-height:1.4;}
+.banner .close{
+  position:absolute;top:12px;right:12px;background:none;border:none;color:#aaa;font-size:20px;
+}
+.banner .learn-more{margin-top:8px;color:#0a84ff;font-weight:600;}
+
+/* -------------------------------------------------
+   Transactions Section
+   ------------------------------------------------- */
+.transactions{margin:24px 16px 0;}
+.transactions h2{
+  font-size:20px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.transactions h2 svg{width:20px;height:20px;}
+.transactions .list{list-style:none;}
+.transactions .item{
+  display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #222;
+}
+.transactions .item:last-child{border-bottom:none;}
+.transactions .icon{
+  width:40px;height:40px;border-radius:10px;background:#333;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.transactions .icon img{max-width:100%;max-height:100%;}
+.transactions .details{flex:1;}
+.transactions .merchant{font-weight:600;font-size:15px;}
+.transactions .date{font-size:13px;opacity:.6;margin-top:2px;}
+.transactions .amount{font-weight:600;font-size:15px;}
+.transactions .positive{color:#34c759;}
+
+/* -------------------------------------------------
+   Edit Balance Button (Bottom-Left)
+   ------------------------------------------------- */
+.edit-balance{
+  position:fixed;bottom:20px;left:16px;
+  background:#1c1c1e;border:1px solid #333;border-radius:12px;
+  padding:10px 14px;display:flex;align-items:center;gap:8px;
+  font-size:15px;font-weight:600;color:#0a84ff;z-index:100;
+}
+.edit-balance input{
+  background:transparent;border:none;color:#fff;font-size:15px;width:100px;
+  outline:none;text-align:right;
+}
+.edit-balance input::placeholder{color:#666;}
+</style>
+</head>
+<body>
+
+<div class="status-bar">
+  <div class="time">9:49</div>
+  <div class="icons">
+    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>" alt="signal">
+    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>" alt="wifi">
+    <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>" alt="battery">
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Apple Cash Card -->
+  <section class="cash-card">
+    <div class="background"></div>
+    <div class="arrows"></div>
+    <div class="header">
+      <div class="logo">Cash</div>
+    </div>
+    <div class="content">
+      <div class="balance-label">Balance</div>
+      <div class="balance" id="balanceDisplay">$2.5K</div>
+      <div class="account">
+        GrokWallet Account
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Send / Request button -->
+  <button class="send-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+    Send or Request
+  </button>
+
+  <!-- Virtual Card Banner -->
+  <section class="banner" id="virtualBanner">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+    </div>
+    <div class="text">
+      <strong>Virtual Card Number Enabled</strong><br>
+      You can now use Apple Cash to make secure online purchases with Safari AutoFill when Apple Pay is not available.
+      <div class="learn-more">Learn More</div>
+    </div>
+    <button class="close" onclick="document.getElementById('virtualBanner').style.display='none'">x</button>
+  </section>
+
+  <!-- Transactions -->
+  <section class="transactions">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h12m-12 5h12m-12 5h12M4 7h1m-1 5h1m-1 5h1"/></svg>
+      Latest Transactions
+    </h2>
+    <ul class="list">
+      <li class="item">
+        <div class="icon"><img src="https://via.placeholder.com/40/FF9500/fff?text=T" alt="Temu"></div>
+        <div class="details">
+          <div class="merchant">Temu</div>
+          <div class="date">10/14/25</div>
+        </div>
+        <div class="amount">-$11.49</div>
+      </li>
+      <li class="item">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8m-4-4h8"/></svg></div>
+        <div class="details">
+          <div class="merchant">Mom</div>
+          <div class="date">Today</div>
+        </div>
+        <div class="amount positive">+$10.00</div>
+      </li>
+    </ul>
+  </section>
+
+</div>
+
+<!-- Edit Balance (Bottom-Left) -->
+<div class="edit-balance">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#0a84ff" stroke-width="2.5"><path d="M11 4h10m-10 6h7m-7 6h4m-7 6h1m5-14l4 4m-4-4l4-4"/></svg>
+  <input type="text" id="balanceInput" placeholder="2536" value="2536">
+</div>
+
+<script>
+// Live update balance
+const input = document.getElementById('balanceInput');
+const display = document.getElementById('balanceDisplay');
+
+function formatBalance(value) {
+  const num = parseFloat(value.replace(/[^0-9.-]+/g,'')) || 0;
+  if (num >= 1000) {
+    return '$' + (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  }
+  return '$' + num.toFixed(2);
+}
+
+input.addEventListener('input', () => {
+  const raw = input.value.trim();
+  display.textContent = formatBalance(raw);
+});
+
+// Initialize
+display.textContent = formatBalance(input.value);
+</script>
+
+</body>
+</html>
